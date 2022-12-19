@@ -1,0 +1,637 @@
+load_file("nrngui.hoc")
+{load_file("import3d.hoc")}
+
+load_file("cell.hoc")
+load_file("proc_print_exp.hoc")
+cvode_active(0) 
+
+strdef morph_dir,morph_name
+objref testcell, stim,v1,stim2
+
+morph_dir="morphologies"
+morph_name="fx_CA1_8.CNG.swc"  
+ 
+testcell = new CA1_PC(morph_dir,morph_name) 
+celsius=34 
+
+objref rect,recV, tempmatrix,savdata,currt, curr,stim,flagtot
+strdef name
+
+//********************************************
+	
+testcell.soma {
+stim2 = new IClamp(0.5)
+stim2.del=88
+stim2.dur=500
+stim2.amp=0.1
+}
+
+testcell.soma {
+stim = new IClamp(0.5)
+stim.del=0
+stim.dur=1000
+stim.amp=0.028
+}
+
+testcell.soma{
+flagtot = new FlagALL(0.5)
+flagtot.a=1
+flagtot.del=stim2.del
+        }
+
+proc distribute_distance(){local x localobj sl
+  strdef stmp, distfunc, mech
+
+  sl = $o1
+  mech = $s2
+  distfunc = $s3
+  testcell.soma[0] distance(0, 0.5)
+  sprint(distfunc, "%%s %s(%%f) = %s", mech, distfunc)
+  forsec sl for(x, 0) {
+  sprint(stmp, distfunc, secname(), x, distance(x))
+  execute(stmp)
+  }
+}
+
+proc value() {
+	valuehd= 1e-6
+	valuekad= 0.015
+}
+
+value()
+
+proc def(){ 
+
+//******AXON************
+gpas_ax=testcell.axon.g_pas
+epasax=testcell.axon.e_pas
+RaAx=testcell.axon.Ra
+kdr_ax=testcell.axon.gkdrbar_kdr
+nax_ax=testcell.axon.gbar_nax  
+kap_ax=testcell.axon.gkabar_kap
+kmdb_ax=testcell.axon.gbar_kmdb
+
+//******DEND-BASAL************
+gpas_basal=testcell.dend.g_pas
+Radend=testcell.dend.Ra
+epas_dend=testcell.dend.e_pas
+kdr_dend=testcell.dend.gkdrbar_kdr
+na3_dend=testcell.dend.gbar_na3d
+kap_dend=testcell.dend.gkabar_kap
+hd_dend=testcell.dend.ghdbar_hd
+cal_dend=testcell.dend.gcalbar_caldb
+cat_dend=testcell.dend.gcatbar_cat
+kca_dend=testcell.dend.gbar_kca  			
+mykca_dend=testcell.dend.gbar_mykca
+can_dend=testcell.dend.gcanbar_can
+car_dend=testcell.dend.gcabar_car
+
+//******DEND-APICAL************
+epas_apic=testcell.apic.e_pas
+gpas_apic=testcell.apic.g_pas
+Raapic=testcell.apic.Ra
+kdr_apical=testcell.apic.gkdrbar_kdr
+na3_apical=testcell.apic.gbar_na3d
+kad_apic=testcell.apic.gkabar_kad
+hd_apic=testcell.apic.ghdbar_hd
+cal_apic=testcell.apic.gcalbar_caldb
+cat_apic=testcell.apic.gcatbar_cat
+kca_apic=testcell.apic.gbar_kca  			
+mykca_apic=testcell.apic.gbar_mykca
+can_apic=testcell.apic.gcanbar_can
+car_apic=testcell.apic.gcabar_car
+
+//**********SOMA********
+gpas_soma=testcell.soma.g_pas
+epas_soma=testcell.soma.e_pas
+Rasoma=testcell.soma.Ra
+kdr_soma=testcell.soma.gkdrbar_kdr
+na3_soma=testcell.soma.gbar_na3
+kap_soma=testcell.soma.gkabar_kap
+kmdb_soma=testcell.soma.gbar_kmdb
+hd_soma=testcell.soma.ghdbar_hd
+cal_soma=testcell.soma.gcalbar_caldb
+cat_soma=testcell.soma.gcatbar_cat
+kca_soma=testcell.soma.gbar_kca  			
+mykca_soma=testcell.soma.gbar_mykca
+car_soma=testcell.soma.gcabar_somacar
+can_soma=testcell.soma.gcanbar_can
+
+}
+//********************************************
+
+shift=-5
+shiftsoma=shift
+
+shiftdend=shift
+shiftrev=0
+shiftsomana3=shift
+shiftsomakdr=shift
+shiftdendna3=shift
+shiftdendkdr=shift
+shiftapicna3=shift
+shiftapickdr=shift
+shnax_ax=shift-4
+shkdr_ax=shift
+
+shiftkm=shift
+shiftmykca=shift
+shiftkadend=shift
+shiftkadapic=shift
+shiftkasoma=shift
+shiftkdsoma=shift
+
+Vrest=-84.5
+c0=1
+time_step=1000
+B_Na=2.6
+C_Na=60
+F_Na=2
+P_Na =1
+alpha_Na=0.13
+alphaena=0.25
+	
+B_K=2.11
+C_K=48
+F_K=2
+P_K=1
+alpha_K=0.15
+alphaek=1.06
+
+B_Ca=2
+C_Ca=50
+F_Ca=2
+P_Ca =1
+alpha_Ca=0.15
+
+stimK=1
+stimCa=1
+stimNa=1
+
+//*********************
+
+proc init() {
+
+  t=0  
+  enaval=71 
+  ekval=-104
+    
+	forall {
+		v = Vrest
+		if(ismembrane("na3d")) {
+			ena=enaval
+			vinit_na3=Vrest
+			count_na3d=c0
+			flag_na3d=0
+			stim_moltNa_na3d=stimNa
+			for(x) if (x!=0 && x!=1) setpointer stim_i_na3d(x), flagtot.f
+		}
+		if(ismembrane("na3")) {
+			ena=enaval
+			vinit_na3=Vrest
+			count_na3=c0
+			flag_na3=0
+			stim_moltNa_na3=stimNa
+			for(x) if (x!=0 && x!=1) setpointer stim_i_na3(x), flagtot.f
+		}
+		if(ismembrane("nax")) {
+			ena=enaval
+			vinit_nax=Vrest
+			count_nax=c0
+			flag_nax=0
+			stim_moltNa_nax=stimNa
+			for(x) if (x!=0 && x!=1) setpointer stim_i_nax(x), flagtot.f
+		}
+	    if(ismembrane("kdr")) {
+			ek= ekval
+			vinit_kdr=Vrest
+			count_kdr=c0
+			flag_kdr=0
+			stim_moltK_kdr=stimK
+			for(x) if (x!=0 && x!=1) setpointer stim_i_kdr(x), flagtot.f
+			}
+	    if(ismembrane("kmdb")) {
+			count_kmdb=c0
+			vinit_kmdb=Vrest
+			ek= ekval
+			flag_kmdb=0
+			stim_moltK_kmdb=stimK
+			for(x) if (x!=0 && x!=1) setpointer stim_i_kmdb(x), flagtot.f
+		}
+	    if(ismembrane("kap")) {
+			count_kap=c0
+			vinit_kap=Vrest
+			ek= ekval
+			flag_kap=0
+			stim_moltK_kap=stimK
+			for(x) if (x!=0 && x!=1) setpointer stim_i_kap(x), flagtot.f
+		}
+		if(ismembrane("kad")) {
+			count_kad=c0
+			vinit_kad=Vrest
+			ek= ekval
+			flag_kad=0
+			stim_moltK_kad=stimK
+			for(x) if (x!=0 && x!=1) setpointer stim_i_kad(x), flagtot.f
+		}
+		if(ismembrane("mykca")) {
+			count_mykca=c0
+			vinit_mykca=Vrest
+			ek= ekval
+			flag_mykca=0
+			stim_moltK_mykca=stimK
+			for(x) if (x!=0 && x!=1) setpointer stim_i_mykca(x), flagtot.f
+			}
+		if(ismembrane("kca")) {	
+			count_kca=c0
+			vinit_kca=Vrest
+			ek= ekval
+			flag_kca=0
+			stim_moltK_kca=stimK
+			for(x) if (x!=0 && x!=1) setpointer stim_i_kca(x), flagtot.f
+		}
+		
+ 
+		if(ismembrane("caldb")) {
+			count_caldb=c0
+			vinit_caldb=Vrest
+			flag_caldb=0
+			stim_moltCa_caldb=stimCa
+			for(x) if (x!=0 && x!=1) setpointer stim_i_caldb(x), flagtot.f
+		}
+		if(ismembrane("car")) {
+			count_car=c0
+			vinit_car=Vrest
+			flag_car=0
+			stim_moltCa_car=stimCa
+			for(x) if (x!=0 && x!=1) setpointer stim_i_car(x), flagtot.f
+		}
+		if(ismembrane("can")) {
+			count_can=c0
+			vinit_can=Vrest
+			flag_can=0
+			stim_moltCa_can=stimCa
+			for(x) if (x!=0 && x!=1) setpointer stim_i_can(x), flagtot.f
+		}
+		if(ismembrane("cat")) {
+			count_cat=c0
+			vinit_cat=Vrest
+			flag_cat=0
+			stim_moltCa_cat=stimCa
+			for(x) if (x!=0 && x!=1) setpointer stim_i_cat(x), flagtot.f
+		}
+		if(ismembrane("hd")) {
+			count_hd=c0
+			vinit_hd=Vrest
+			flag_hd=0
+			stim_moltNa_hd=stimNa
+			for(x) if (x!=0 && x!=1) setpointer stim_i_hd(x), flagtot.f
+		}
+		if(ismembrane("somacar")) {
+			count_somacar=c0
+			vinit_somacar=Vrest
+			flag_somacar=0
+			stim_moltCa_somacar=stimCa
+			for(x) if (x!=0 && x!=1) setpointer stim_i_somacar(x), flagtot.f
+		}
+    }
+	
+	finitialize(Vrest)
+	fcurrent()
+	cvode.re_init()
+}
+
+def()
+init()
+
+proc biophysint() {
+
+ enaval=  71 
+ ekval=-104
+
+c0=1
+
+  forall {
+		v = Vrest
+		if(ismembrane("na3d")) {
+			ena=enaval
+			vinit_na3d=Vrest
+			flag_na3d=0
+			count_na3d=c0
+			BNa_na3d=B_Na
+			CNa_na3d=C_Na
+			FNa_na3d=F_Na
+			PNa_na3d=P_Na
+			timestep_na3d=time_step
+			alphash1_na3d=alpha_Na
+			alphaena_na3d=alphaena
+			stim_moltNa_na3d=stimNa
+		}
+		if(ismembrane("na3")) {
+			ena=enaval
+			vinit_na3=Vrest
+			flag_na3=0
+			count_na3=c0
+			BNa_na3=B_Na
+			CNa_na3=C_Na
+			FNa_na3=F_Na
+			PNa_na3=P_Na
+			timestep_na3=time_step
+			alphash1_na3=alpha_Na
+			alphaena_na3=alphaena
+			stim_moltNa_na3=stimNa
+		}
+		if(ismembrane("nax")) {
+			ena=enaval
+			flag_nax=0
+			vinit_nax=Vrest
+			count_nax=c0
+			BNa_nax=B_Na
+			CNa_nax=C_Na
+			FNa_nax=F_Na
+			PNa_nax=P_Na
+			timestep_nax=time_step
+			alphash1_nax=alpha_Na
+			alphaena_nax=alphaena
+			stim_moltNa_nax=stimNa
+		}
+		 if(ismembrane("kdr")) {
+			ek= ekval
+			flag_kdr=0
+			vinit_kdr=Vrest
+			count_kdr=c0
+			BK_kdr=B_K
+			CK_kdr=C_K
+			FK_kdr=F_K
+			PK_kdr=P_K
+			timestep_kdr=time_step
+			alphash1_kdr=alpha_K
+			alpha_kdr=alphaek
+			stim_moltK_kdr=stimK
+		}
+		if(ismembrane("kmdb")) {
+			count_kmdb=c0
+			flag_kmdb=0
+			vinit_kmdb=Vrest
+			ek= ekval
+			BK_kmdb=B_K
+			CK_kmdb=C_K
+			FK_kmdb=F_K
+			PK_kmdb=P_K
+			timestep_kmdb=time_step
+			alphash1_kmdb=alpha_K
+			alpha_kmdb=alphaek
+			stim_moltK_kmdb=stimK
+		}
+		if(ismembrane("kap")) {
+			count_kap=c0
+			flag_kap=0
+			vinit_kap=Vrest
+			ek= ekval
+			BK_kap=B_K
+			CK_kap=C_K
+			FK_kap=F_K
+			PK_kap=P_K
+			timestep_kap=time_step
+			alphash1_kap=alpha_K
+			alpha_kap=alphaek
+			stim_moltK_kap=stimK
+		}
+		if(ismembrane("kad")) {
+			count_kad=c0
+			flag_kad=0
+			vinit_kad=Vrest
+			ek= ekval
+			ek= ekval
+			BK_kad=B_K
+			CK_kad=C_K
+			FK_kad=F_K
+			PK_kad=P_K
+			timestep_kad=time_step
+			alphash1_kad=alpha_K
+			alpha_kad=alphaek
+			stim_moltK_kad=stimK
+			
+		}
+
+		if(ismembrane("mykca")) {
+			count_mykca=c0
+			flag_mykca=0
+			vinit_mykca=Vrest
+			ek= ekval
+			BK_mykca=B_K
+			CK_mykca=C_K
+			FK_mykca=F_K
+			PK_mykca=P_K
+			timestep_mykca=time_step
+			alphash1_mykca=alpha_K
+			alpha_mykca=alphaek
+			stim_moltCa_mykca=stimK
+			}
+		if(ismembrane("kca")) {	
+			count_kca=c0
+			flag_kca=0
+			vinit_kca=Vrest
+			ek= ekval
+			BK_kca=B_K
+			CK_kca=C_K
+			FK_kca=F_K
+			PK_kca=P_K
+			timestep_kca=time_step
+			alphash1_kca=alpha_K
+			alpha_kca=alphaek
+			alpha_kca=alphaek
+			stim_moltK_kca=stimK
+		}
+		if(ismembrane("caldb")) {
+			count_caldb=c0
+			flag_caldb=0
+			vinit_caldb=Vrest
+			BCa_caldb=B_Ca
+			CCa_caldb=C_Ca
+			FCa_caldb=F_Ca
+			PCa_caldb=P_Ca
+			timestep_caldb=time_step
+			alphash1_caldb=alpha_Ca
+			stim_moltCa_caldb=stimCa			
+		}
+		if(ismembrane("car")) {
+			count_car=c0
+			flag_car=0
+			vinit_car=Vrest
+			BCa_car=B_Ca
+			CCa_car=C_Ca
+			FCa_car=F_Ca
+			PCa_car=P_Ca
+			timestep_car=time_step
+			alphash1_car=alpha_Ca
+			stim_moltCa_car=stimCa
+		}
+		if(ismembrane("can")) {
+			count_can=c0
+			flag_can=0
+			vinit_can=Vrest
+			BCa_can=B_Ca
+			CCa_can=C_Ca
+			FCa_can=F_Ca
+			PCa_can=P_Ca
+			timestep_can=time_step
+			alphash1_can=alpha_Ca
+			stim_moltCa_can=stimCa
+		}
+		if(ismembrane("cat")) {
+			count_cat=0
+			flag_cat=0
+			vinit_cat=Vrest
+			BCa_cat=B_Ca
+			CCa_cat=C_Ca
+			FCa_cat=F_Ca
+			PCa_cat=P_Ca
+			timestep_cat=time_step
+			alphash1_cat=alpha_Ca
+			stim_moltCa_cat=stimCa
+		}
+		if(ismembrane("hd")) {
+			count_hd=c0
+			flag_hd=0
+			vinit_hd=Vrest
+			BNa_hd=B_Na
+			CNa_hd=C_Na
+			FNa_hd=F_Na
+			PNa_hd=P_Na
+			timestep_hd=time_step
+			alphash1_hd=alpha_Na
+		}
+		if(ismembrane("somacar")) {
+			count_somacar=c0
+			flag_somacar=0
+			vinit_somacar=Vrest
+			BCa_somacar=B_Ca
+			CCa_somacar=C_Ca
+			FCa_somacar=F_Ca
+			PCa_somacar=P_Ca
+			timestep_somacar=time_step
+			alphash1_somacar=alpha_Ca
+			stim_moltCa_somacar=stimCa
+		}
+	 }
+
+forsec testcell.axonal {  
+
+	g_pas = gpas_ax
+    e_pas = epasax
+	Ra = RaAx
+	gkdrbar_kdr= kdr_ax
+	gbar_nax = nax_ax
+	gkabar_kap = kap_ax
+	gbar_kmdb=kmdb_ax
+	
+	sh_nax=shnax_ax
+	sh_kdr=shkdr_ax
+	sh_kap=shkdr_ax
+	sh_kmdb= shiftkm 
+	
+}
+
+ 
+forsec testcell.somatic {
+	
+	Ra = Rasoma
+    g_pas = gpas_soma
+	e_pas = epas_soma
+	gbar_kmdb=kmdb_soma
+	gkdrbar_kdr= kdr_soma
+	gbar_na3=na3_soma
+	gkabar_kap = kap_soma
+	ghdbar_hd =hd_soma
+	gcalbar_caldb= cal_soma
+	gcatbar_cat= cat_soma
+	gcanbar_can= can_soma
+    gcabar_somacar=car_soma
+	gbar_kca=kca_soma
+	gbar_mykca=mykca_soma
+
+	
+	sh_na3=shiftsomana3
+	sh_kdr=shiftsomakdr
+	
+	sh_kap=shiftkasoma
+	sh_caldb=shiftsoma
+	sh_somacar=shiftsoma
+	sh_cat=shiftsoma
+	sh_can=shiftsoma
+	sh_kmdb=shiftkm 
+	sh_mykca=shiftmykca 
+	sh_hd=shiftsoma
+   
+}
+
+forsec testcell.basal {
+	
+	g_pas = gpas_basal
+	Ra = Radend
+	e_pas = epas_dend
+	gkdrbar_kdr = kdr_dend
+	gbar_na3d=na3_dend
+	gkabar_kap = kap_dend
+	ghdbar_hd =hd_dend
+	gcalbar_caldb= cal_dend
+	gcatbar_cat= cat_dend
+	gcanbar_can= can_dend
+	gbar_kca = kca_dend
+	gbar_mykca = mykca_dend
+    gcabar_car=car_dend
+	  
+	sh_na3d= shiftdendna3
+	sh_kdr=shiftdendkdr
+	sh_kap=shiftkadend
+	sh_caldb=shiftdend
+	sh_car=shiftdend
+	sh_can=shiftdend
+	sh_cat=shiftdend
+	sh_mykca= shiftmykca 
+	sh_hd=shiftdend
+	  
+}
+
+forsec testcell.apical {
+	
+    g_pas = gpas_apic
+	e_pas=epas_apic
+    Ra = Raapic
+    gkdrbar_kdr = kdr_apical
+	gbar_na3d=na3_apical
+	gkabar_kad = kad_apic
+	ghdbar_hd =hd_apic
+	gcalbar_caldb= cal_apic
+	gcatbar_cat= cat_apic
+	gcanbar_can= can_apic
+	gcabar_car=car_apic
+	gbar_kca = kca_apic
+    gbar_mykca = mykca_apic
+	
+	sh_na3d=shiftapicna3
+	sh_kdr=shiftapickdr
+	
+	sh_kad=shiftkadapic
+	sh_caldb=shift
+	sh_car=shift
+	sh_cat=shift
+	sh_can=shift
+	sh_mykca=  shiftmykca 
+	sh_hd=shift
+	 
+    }
+
+  distribute_distance(testcell.apical, "ghdbar_hd", " (1+ 6/(1.0 + exp((280-%.17g)/50)))*valuehd")                    
+  distribute_distance(testcell.apical, "gkabar_kad", "(18./(1. + exp((160-%.17g)/40)))*valuekad")
+
+}
+
+biophysint()
+load_file("ttt.ses")
+
+
+
+
+

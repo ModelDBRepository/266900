@@ -1,0 +1,146 @@
+ 
+ 
+ 
+ objref time, y, y2, infile, ifile, currt, curr,graphV
+ time = new Vector()
+ graphV=new Vector()
+ y = new Vector()
+ 
+Vrest=-69.9-15
+ 
+ strdef name100,name150,name200,name250,name300,name350,name400,name50
+
+ name50="20303003_R_HM_0.05.txt"
+ name100="20303003_R_HM_0.1.txt"   
+ name150="20303003_R_HM_0.15.txt"
+ name200="20303003_R_HM_0.2.txt"
+ name250="20303003_R_HM_0.25.txt"
+ name300="20303003_R_HM_0.3.txt"
+ name350="20303003_R_HM_0.35.txt"
+
+
+ 
+proc zero1() {
+time.resize(0)
+y.resize(0)
+infile = new File()
+infile.ropen(name100)
+	while (!infile.eof()) {
+	time.append(infile.scanvar()*1000)
+	y.append(infile.scanvar())
+	}
+infile.close()
+graphV=Graph[0]
+graphV.color(2)
+graphV.vector(y.size()-1, &time.x[0], &y.x[0])
+graphV.color(3)
+graphV.color(1)
+graphV.exec_menu("Whole Scene")
+} 
+ 
+proc zero15() {
+time.resize(0)
+y.resize(0)
+infile = new File()
+infile.ropen(name150)
+	while (!infile.eof()) {
+	time.append(infile.scanvar()*1000)
+	y.append(infile.scanvar())
+	}
+infile.close()
+graphV=Graph[0]
+graphV.color(2)
+graphV.vector(y.size()-1, &time.x[0], &y.x[0])
+graphV.color(3)
+graphV.color(1)
+graphV.exec_menu("Whole Scene")
+}
+proc zero2() {
+time.resize(0)
+y.resize(0)
+infile = new File()
+infile.ropen(name200)
+	while (!infile.eof()) {
+	time.append(infile.scanvar()*1000)
+	y.append(infile.scanvar())
+	}
+infile.close()
+graphV=Graph[0]
+graphV.color(2)
+graphV.vector(y.size()-1, &time.x[0], &y.x[0])
+graphV.color(3)
+graphV.color(1)
+graphV.exec_menu("Whole Scene")
+}
+proc zero25() {
+time.resize(0)
+y.resize(0)
+infile = new File()
+infile.ropen(name250)
+	while (!infile.eof()) {
+	time.append(infile.scanvar()*1000)
+	y.append(infile.scanvar())
+	}
+infile.close()
+graphV=Graph[0]
+graphV.color(2)
+graphV.vector(y.size()-1, &time.x[0], &y.x[0])
+graphV.color(3)
+graphV.color(1)
+graphV.exec_menu("Whole Scene")
+}
+proc zero3() {
+time.resize(0)
+y.resize(0)
+infile = new File()
+infile.ropen(name300)
+	while (!infile.eof()) {
+	time.append(infile.scanvar()*1000)
+	y.append(infile.scanvar())
+	}
+infile.close()
+graphV=Graph[0]
+graphV.color(2)
+graphV.vector(y.size()-1, &time.x[0], &y.x[0])
+graphV.color(3)
+graphV.color(1)
+graphV.exec_menu("Whole Scene")
+}
+proc zero35() {
+time.resize(0)
+y.resize(0)
+infile = new File()
+infile.ropen(name350)
+	while (!infile.eof()) {
+	time.append(infile.scanvar()*1000)
+	y.append(infile.scanvar())
+	}
+infile.close()
+graphV=Graph[0]
+graphV.color(2)
+graphV.vector(y.size()-1, &time.x[0], &y.x[0])
+graphV.color(3)
+graphV.color(1)
+graphV.exec_menu("Whole Scene")
+}
+
+
+
+proc zero05() {
+time.resize(0)
+y.resize(0)
+infile = new File()
+infile.ropen(name50)
+	while (!infile.eof()) {
+	time.append(infile.scanvar()*1000)
+	y.append(infile.scanvar())
+	}
+infile.close()
+graphV=Graph[0]
+graphV.color(2)
+graphV.vector(y.size()-1, &time.x[0], &y.x[0])
+graphV.color(3)
+graphV.color(1)
+graphV.exec_menu("Whole Scene")
+}
+
